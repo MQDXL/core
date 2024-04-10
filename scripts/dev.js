@@ -1,4 +1,8 @@
 // @ts-check
+//打包后会将结果输出到对应的包下的dist目录，
+// 常见的格式vue.global.js
+// vue.esm-bundler.js（不会打包此模块的依赖模块，给webpack等构建工具使用）
+// vue.esm-browser.js (会将依赖打包到模块中，可在浏览器中直接使用)
 
 // Using esbuild for faster dev builds.
 // We are still using Rollup for production builds because it generates
@@ -9,16 +13,30 @@ import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import minimist from 'minimist'
+// 使用了node中的包，如何去解析这个包 TODO:
 import { polyfillNode } from 'esbuild-plugin-polyfill-node'
-
+// $ node example/parse.js -x 3 -y 4 -n5 -abc --beep=boop foo bar baz
+// {
+// 	_: ['foo', 'bar', 'baz'],
+// 	x: 3,
+// 	y: 4,
+// 	n: 5,
+// 	a: true,
+// 	b: true,
+// 	c: true,
+// 	beep: 'boop'
+// }
 const require = createRequire(import.meta.url)
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const args = minimist(process.argv.slice(2))
 const targets = args._.length ? args._ : ['vue']
+console.log('targets', targets)
+// global:会在window上挂载一个属性 window.vue
 const format = args.f || 'global'
 const prod = args.p || false
+// 打包的vue包里面有很多依赖，是否要将这些依赖打包的一个包中
+// 内联所有依赖
 const inlineDeps = args.i || args.inline
-
 // resolve output
 const outputFormat = format.startsWith('global')
   ? 'iife'
@@ -46,11 +64,14 @@ for (const target of targets) {
   let external = []
   if (!inlineDeps) {
     // cjs & esm-bundler: external all deps
+    // node scripts/dev.js reactivity -f esm-bundler 打包的是reactivity模块
     if (format === 'cjs' || format.includes('esm-bundler')) {
+      // 如果不是把依赖打包在一起，需要配置external，排除掉依赖的模块
       external = [
         ...external,
         ...Object.keys(pkg.dependencies || {}),
         ...Object.keys(pkg.peerDependencies || {}),
+        // TODO:
         // for @vue/compiler-sfc / server-renderer
         'path',
         'url',
@@ -102,7 +123,9 @@ for (const target of targets) {
     .context({
       entryPoints: [resolve(__dirname, `../packages/${target}/src/index.ts`)],
       outfile,
+      // 默认将所有的包打包到一起
       bundle: true,
+      // 排除掉不需要打包的模块
       external,
       sourcemap: true,
       format: outputFormat,

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <button class="btn">点击</button>
+    <script>
+        // 不能看出，这段代码执行完之后，nums是不是垃圾，因为执行完后，在浏览器的控制台
+        // 还能访问nums这个数组。没有被回收。
+        // 是不是垃圾，要问程序员，让程序员自己控制。设置为null
+        // gc并不知道什么是垃圾什么不是垃圾，gc假定无法访问的内容就是垃圾，
+        let nums = [1,2,3,4];
+        // 假如修改 nums = [5,6,7,8],那么[1,2,3,4]就无法访问了，就一定是垃圾
+        // 但是有些数据，我们再不使用了，我们是可以触达这些数据的，
+        // gc并不能识别为垃圾，这些数据就是内存泄露。这部分数据过大，就会影响程序的执行.
+
+        // gc的具体实现技术 
+        // 引用计数
+        // 标记清除 --- 新生代/旧生代、星历图
+        // 
+        const sum = nums.reduce((total,num)=>(total+num),0)
+        console.log(sum)
+
+        // function createIncrease(){
+        //     const doms  = new Array(100000).fill(0).map((_,i)=>{
+        //         const dom = document.createElement('div')
+        //         dom.innerHTML = i;
+        //     })
+        //     function increase(){
+        //         doms.forEach((dom)=>{
+        //             dom.innerHTML = Number(dom.innerHTML)+ 1;
+        //         })
+        //     }
+        //     return increase
+        // }
+        // let increase = createIncrease();
+        // const btn = document.querySelector('.btn');
+        // function handler(){
+        //     increase();
+        //     btn.removeEventListener('click',handler)
+        //     // 告诉gc清理内存。没有这句代码，这个函数中引用了大量的数据，会占用大量内存，这样的函数容易被忽略。
+        //     // 闭包跟其他的内存泄露没有不同，闭包是持有了不需要的函数引用，会导致函数关联的词法环境无法销毁，从而导致内存泄露，
+        //     // 闭包容易让我们忘记清除不使用的函数,而这个函数引用了占用大量内存的数据。
+        //     increase = null; 
+        // }
+        // btn.addEventListener('click', handler)
+
+        // 2.闭包中一种情况，无法触达，但是gc无法回收
+        // 当多个函数共享词法环境是，会导致词法环境膨胀，从而导致无法触达也无法回收的情况
+        function createIncrease(){
+            const doms  = new Array(100000).fill(0).map((_,i)=>{
+                const dom = document.createElement('div')
+                dom.innerHTML = i;
+            })
+            // _temp,increase 共享词法环境，所以doms在gc优化的时候还被_temp函数使用，不会被优化掉
+            function _temp(){
+                console.log(doms)
+            }
+
+            function increase(){}
+
+            return increase
+        }
+        let increase
+        const btn = document.querySelector('.btn');
+
+        btn.addEventListener('click', ()=>{
+            increase   = createIncrease();
+        })
+
+    </script>
+</body>
+</html>
